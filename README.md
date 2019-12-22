@@ -1,6 +1,6 @@
 # Go Concurrency
 
-This is another study solely dedicated to understanding Concurrency and this will be learnt with Go.
+This is another study solely dedicated to understanding Concurrency and this will be learnt with Go, using the book Concurrency in Go by Katherine Cox-Buday as a guide.
 
 I will be building small programs and making documentation of findings in any way possible.
 
