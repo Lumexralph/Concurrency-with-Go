@@ -1,0 +1,62 @@
+// Package main illustrates the use of RWMutex to
+// demonstrate a producer that is less active than the
+// numerous consumers created.
+package main
+
+import (
+	"fmt"
+	"math"
+	"os"
+	"sync"
+	"text/tabwriter"
+	"time"
+)
+
+var producer = func(wg *sync.WaitGroup, l sync.Locker) {
+	defer wg.Done()
+	for i := 5; i > 0; i-- {
+		l.Lock()
+		l.Unlock()
+		time.Sleep(1)
+	}
+}
+
+var observer = func(wg *sync.WaitGroup, l sync.Locker) {
+	defer wg.Done()
+	l.Lock()
+	defer l.Unlock()
+}
+
+var test = func(count int, mutex, rwMutex sync.Locker) time.Duration {
+	var wg sync.WaitGroup
+	wg.Add(count + 1)
+	beginTestTime := time.Now()
+
+	go producer(&wg, mutex)
+
+	for i := count; i > 0; i-- {
+		go observer(&wg, rwMutex)
+	}
+
+	// block till all the goroutines have exited
+	wg.Wait()
+	// elapsed time since the beginning of test
+	return time.Since(beginTestTime)
+}
+
+func main() {
+	tw := tabwriter.NewWriter(os.Stdout, 0, 1, 2, ' ', 0)
+	defer tw.Flush()
+
+	var m sync.RWMutex
+	// write the formatted string to the writer
+	fmt.Fprintf(tw, "Readers\tRWMutext\tMutex\n")
+
+	// generate more formatted string
+	for i := 0; i < 20; i++ {
+		count := int(math.Pow(2, float64(i)))
+		fmt.Fprintf(tw, "%d\t%v\t%v\n", count,
+			test(count, &m, m.RLocker()),
+			test(count, &m, &m))
+	}
+}
