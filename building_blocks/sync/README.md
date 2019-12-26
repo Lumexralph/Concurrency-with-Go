@@ -15,3 +15,7 @@ When we are in a situation that not all the concurrent processes need to write o
 It is a way to make a goroutine efficiently sleep until it was signaled/event occurrence to wake and check its condition.
 
 Also, there is Broadcast method that provides a way to communicate with all the goroutines that are waiting the condition signal.
+
+4. Once - It is a type that utilizes some `sync` primitives internally to ensure that only one call to `Do` ever calls the function passed in, even on different goroutines. The `sync.Once` only counts the number of times `Do` is called.
+
+5. Pool - 
