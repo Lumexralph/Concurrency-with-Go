@@ -13,3 +13,5 @@ When we are in a situation that not all the concurrent processes need to write o
 3. Cond - A meeting or convergence point for goroutines waiting for or announcing the occurrence of an event(is an arbitrary signal between two or more goroutines that takes no information other than to say it has occurred).
 
 It is a way to make a goroutine efficiently sleep until it was signaled/event occurrence to wake and check its condition.
+
+Also, there is Broadcast method that provides a way to communicate with all the goroutines that are waiting the condition signal.
