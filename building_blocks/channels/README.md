@@ -66,3 +66,22 @@ Close    | nil              | Panic
 ....... | Receive Only | Compilation Error
 
 src - Concurrency in Go book by Katherine Cox-Buday
+
+## The select Statement
+
+The `select` statement is the glue that binds channels together; it is how we are able to compose channels together in a program to form larger abstractions.
+
+If there is no communication on the channels handled by a `select` statement, it blocks.
+
+        select {
+            case <-chan1:
+                // do something
+            case chan2<- "ball":
+                // do something
+            default:
+                // do something if no channel is ready
+        }
+
+An empty `select` statement will block forever.
+
+        select { }
