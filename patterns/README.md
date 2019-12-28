@@ -29,3 +29,9 @@ Goroutines are not garbage collected by the runtime, so we don't want to leave t
 How?
 
 Establish a signal(channel) between parent goroutine and its children, that allows parent to signal cancellation to its children. Signal is read-only channel called `done` by convention. The parent goroutine passes this channel to the child goroutine and the closes the channel when it wants to cancel the child goroutine.
+
+If a goroutine is responsible for creating a goroutine, it is also responsible for ensuring it can stop the goroutine.
+
+## The `or-channel`
+
+It is a pattern that creates a composite `done` channel through recursion and goroutines. Combining one or more `done` channels into a `done` channel that closes if any of its component channel closes.
