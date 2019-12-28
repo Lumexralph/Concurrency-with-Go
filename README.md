@@ -21,3 +21,5 @@ Solving problems in a parallel manner led to Horizontal Scaling, having multiple
 * Common Issues in Concurrency
 
 * Building blocks of Go Concurrency
+
+* Concurrency Patterns

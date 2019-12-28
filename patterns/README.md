@@ -35,3 +35,11 @@ If a goroutine is responsible for creating a goroutine, it is also responsible f
 ## The `or-channel`
 
 It is a pattern that creates a composite `done` channel through recursion and goroutines. Combining one or more `done` channels into a `done` channel that closes if any of its component channel closes.
+
+## Error Handling
+
+The most fundamental question when thinking about error handling is "Who should be responsible for handling the error?".
+
+Your concurrent processes should send their errors to another part of the program that has complete information about the complete state of your program and can make more informed decision on what to do.
+
+Errors should be considered first class citizen when constructing value to return from goroutines. If goroutines can produce errors, those errors should be tightly coupled with the result type, passed along through same line of communication.
