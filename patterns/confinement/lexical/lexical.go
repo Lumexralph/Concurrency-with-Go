@@ -8,7 +8,8 @@ import "fmt"
 // encapsulate ownership, closing and writing to channel
 // expose a read-only channel to any receiver
 func chanOwner() <-chan int {
-	// ownership
+	// ownership, has lexical scope of this function
+	// it also confines write access to the channel here
 	results := make(chan int, 5)
 	go func() {
 		// closing
