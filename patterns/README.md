@@ -69,3 +69,7 @@ This pattern is used for the stages of a pipeline, when these two conditions app
 ## The or-done-channel
 
 If the `done` channel of a goroutine we are reading another channel gets cancelled, we don't know for sure if the channel we are reading also gets cancelled. This patterns helps to handle situations like this.
+
+## The tee-channel
+
+In a situation you take in a stream of user commands and want to send them to something that executes them and also logs them for auditing, this pattern is a apt for this situation. It takes in a channel to read from and return two separate channels that will get same value.
