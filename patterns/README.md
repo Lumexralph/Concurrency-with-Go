@@ -65,3 +65,7 @@ This pattern is used for the stages of a pipeline, when these two conditions app
 * It doesn't rely on values that the stage has calculated before.
 
 * It takes a long time to run.
+
+## The or-done-channel
+
+If the `done` channel of a goroutine we are reading another channel gets cancelled, we don't know for sure if the channel we are reading also gets cancelled. This patterns helps to handle situations like this.
