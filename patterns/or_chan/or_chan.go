@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// takes variadic slice of channels
+// takes variadic argument of channels and pack it into a slice
 // var or func(channels ...<-chan interface{}) <-chan interface{}
 func or(channels ...<-chan interface{}) <-chan interface{} {
 	// base index

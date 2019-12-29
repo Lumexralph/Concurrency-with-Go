@@ -43,3 +43,13 @@ The most fundamental question when thinking about error handling is "Who should 
 Your concurrent processes should send their errors to another part of the program that has complete information about the complete state of your program and can make more informed decision on what to do.
 
 Errors should be considered first class citizen when constructing value to return from goroutines. If goroutines can produce errors, those errors should be tightly coupled with the result type, passed along through same line of communication.
+
+## Pipelines
+
+It is a very powerful tool to use when your program needs to process streams or batches of data. A pipeline is nothing more than a series of things that take data in, perform an operation on it and pass the data back out. Each of these operations are called `stages` of the pipeline.
+
+Stages
+
+Batch Processing - operate on a chunk of data all at once instead of one discrete value at a time.
+
+Stream Processing - stage receives and returns one element at a time.
