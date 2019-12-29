@@ -137,5 +137,5 @@ func MaybeMoveLots(ctx context.Context, n int, fetch MaybeFetcher, put MaybePutt
 }
 
 func main() {
-	fmt.Println(Fetcher())
+	fmt.Println()
 }

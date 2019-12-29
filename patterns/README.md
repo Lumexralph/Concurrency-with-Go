@@ -53,3 +53,15 @@ Stages
 Batch Processing - operate on a chunk of data all at once instead of one discrete value at a time.
 
 Stream Processing - stage receives and returns one element at a time.
+
+## Fan-Out, Fan-In
+
+Fan-out is a term to describe the process of starting multiple goroutines to handle the input from the pipeline.
+
+Fan-in is a term to describe the process of combining multiple results into one channel.
+
+This pattern is used for the stages of a pipeline, when these two conditions apply;
+
+* It doesn't rely on values that the stage has calculated before.
+
+* It takes a long time to run.
