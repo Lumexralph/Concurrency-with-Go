@@ -77,3 +77,23 @@ In a situation you take in a stream of user commands and want to send them to so
 ## The bridge-channel
 
 Is a way of destructing a sequence that is channel of channels into a simple channel.
+
+## Queuing
+
+It is sometimes useful to begin accepting work for your pipeline even though it is not yet ready to accept more work.
+
+Once your stage of the pipeline has completed some work, it stores it in a temporary location in memory for later retrieval without your stage holding a reference to it.
+
+It should be one of the last technique introduced into the program if needed at all when optimizing the pipeline because if done prematurely, it can lead to synchronization issues such as deadlocks and livelocks. Queuing will almost never speed up the runtime of a program,it only makes it behave differently.
+
+True utility of queues is to decouple stages so that the runtime of one stage has no impact on the runtime of another.
+
+Queuing should be implemented either at the entrance of the pipeline or stages where batching will lead to higher efficiency.
+
+## The Context Package
+
+It serves two primary purposes:
+
+* To provide API for cancelling branches of the call-graph
+
+* To provide a data-bag or kind of storage for transporting request-scoped data through our call-graph
