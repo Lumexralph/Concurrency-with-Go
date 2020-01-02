@@ -27,7 +27,7 @@ func orDone(done, c <-chan interface{}) <-chan interface{} {
 	return valStream
 }
 
-// it helps destructure a channel of channels into a single channel
+// it helps destructuring a channel of channels into a single channel
 func bridge(
 	done <-chan interface{},
 	chanStream <-chan <-chan interface{},

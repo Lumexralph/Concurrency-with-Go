@@ -4,6 +4,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -111,15 +112,139 @@ func or(channels ...<-chan interface{}) <-chan interface{} {
 	return orDone
 }
 
-// the ward
-func doWork(done <-chan interface{}, _ time.Duration) <-chan interface{} {
-	log.Println("ward: Hello, I am not responsible for any work")
+func doWorkFn(
+	done <-chan interface{},
+	intList ...int,
+) (startGoroutineFn, <-chan interface{}) {
+	intChanStream := make(chan (<-chan interface{}))
+	intStream := bridge(done, intChanStream)
 
+	// ward -
+	doWork := func(
+		done <-chan interface{},
+		pulseInterval time.Duration,
+	) <-chan interface{} {
+		// channel to cumminicate on withing ward's goroutine
+		intStream := make(chan interface{})
+		hearbeat := make(chan interface{})
+
+		go func() {
+			defer close(intStream)
+
+			select {
+			// let bridge know the channel we'll be communicating on.
+			case intChanStream <- intStream:
+			case <-done:
+				return
+			}
+
+			pulse := time.Tick(pulseInterval)
+
+			for {
+			valueLoop:
+				for _, intVal := range intList {
+					// simulate an unhealthy ward when negative value is seen
+					if intVal < 0 {
+						log.Printf("negative value: %d\n", intVal)
+						return
+					}
+
+					for {
+						select {
+						case <-pulse:
+							select {
+							case hearbeat <- struct{}{}:
+							default:
+							}
+						case intStream <- intVal:
+							continue valueLoop
+						case <-done:
+							return
+						}
+					}
+				}
+			}
+		}()
+		return hearbeat
+	}
+	return doWork, intStream
+}
+
+// it helps destructuring a channel of channels into a single channel
+func bridge(
+	done <-chan interface{},
+	chanStream <-chan <-chan interface{},
+) <-chan interface{} {
+	// single channel to return all values
+	// from the stream of channels
+	valStream := make(chan interface{})
 	go func() {
-		<-done
-		log.Println("ward: I am halting.")
+		defer close(valStream)
+		// pull values(chan) of the stream of channels
+		for {
+			var stream <-chan interface{}
+			select {
+			case maybeStream, ok := <-chanStream:
+				if ok == false {
+					return
+				}
+				stream = maybeStream
+			case <-done:
+				return
+			}
+
+			for val := range orDone(done, stream) {
+				select {
+				case valStream <- val:
+				case <-done:
+				}
+			}
+		}
 	}()
-	return nil
+	return valStream
+}
+
+func orDone(done, c <-chan interface{}) <-chan interface{} {
+	valStream := make(chan interface{})
+	go func() {
+		defer close(valStream)
+		for {
+			select {
+			case <-done:
+				return
+			case v, ok := <-c:
+				// if channel has been closed
+				if ok == false {
+					return
+				}
+				// continue reading value from the channel
+				select {
+				case valStream <- v:
+				case <-done:
+				}
+			}
+		}
+	}()
+	return valStream
+}
+
+func take(
+	done <-chan interface{},
+	valueStream <-chan interface{},
+	num int,
+) <-chan interface{} {
+	funcStream := make(chan interface{})
+	go func() {
+		defer close(funcStream)
+		for i := num; i > 0 || i == -1; i-- {
+			select {
+			case <-done:
+				return
+			case funcStream <- <-valueStream:
+			}
+		}
+	}()
+	return funcStream
 }
 
 // the monitoring system
@@ -127,16 +252,17 @@ func main() {
 	log.SetOutput(os.Stdout)
 	log.SetFlags(log.Ltime | log.LUTC)
 
-	monitorWithSteward := newSteward(4*time.Second, doWork)
-
 	done := make(chan interface{})
-	time.AfterFunc(9*time.Second, func() {
-		log.Println("main: halting steward and ward.")
-		close(done)
-	})
+	defer close(done)
 
-	// start the  monitoring
-	for range monitorWithSteward(done, 4*time.Second) {
+	// create the ward
+	doWork, intStream := doWorkFn(done, 3, 2, 1, 0, -1, 2, -3, 4, 3, 2, 1)
+	// create the steward
+	monitorWithSteward := newSteward(1*time.Millisecond, doWork)
+	// start the ward and start monitoring
+	monitorWithSteward(done, 1*time.Hour)
+
+	for intVal := range take(done, intStream, 6) {
+		fmt.Printf("main: received - %d\n", intVal)
 	}
-	log.Println("Done.")
 }
