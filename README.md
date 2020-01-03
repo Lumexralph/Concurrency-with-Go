@@ -23,3 +23,25 @@ Solving problems in a parallel manner led to Horizontal Scaling, having multiple
 * Building blocks of Go Concurrency
 
 * Concurrency Patterns
+
+## Tools to analyze concurrent code
+
+### Race Detection
+
+Running the following commands can help
+
+        go run -race sample.go      // compile and run the program
+        go test -race sample        // test the package
+        go build -race sample       // build the command
+        go install -race sample     // install the package
+
+### [pprof](https://golang.org/pkg/runtime/pprof/)
+
+It is a tool that was created at Google and can display profile data either while a program is running or by consuming saved runtime statistics. [More](https://github.com/google/pprof/blob/master/doc/README.md)
+
+It helps to answer these questions;
+
+* How your program is performing at runtime
+* How many goroutines are running
+* If the CPU is being fully utilized
+* Memory consumption by the program
