@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"math/rand"
+	"time"
 )
 
 // A Thing is a dummy type that we are using for the exercise. It is "fetched"
@@ -25,23 +27,58 @@ type Putter func(Thing)
 // return an error.
 type MaybePutter func(Thing) error
 
+// fetch function simulates returning Thing until there's nothing else
+// it simulates a process that takes some time
+func fetch() (thing Thing, ok bool) {
+	// simulate the delay
+	time.Sleep(2 * time.Second)
+
+	bookList := []string{"concurrency with Go", "Go systems programming",
+		"Isomorphic Go", "Go BluePrints", "Master Go",
+		"Go Library Cookbook", "Algorithm and Data structures"}
+
+	// generate a random index, if the index is negative
+	// return false with an empty thing
+	rand.Seed(time.Now().UnixNano())
+	thing = rand.Intn(len(bookList)-(-len(bookList))) + (-len(bookList))
+	if thing.(int) > 0 {
+		thing, ok = bookList[thing.(int)], true
+	}
+	return
+}
+
+var storeForPut = []Thing{}
+
+// put take a value of type Thing and store it in a global map
+// also simulates another long process
+func put(thing Thing) {
+	time.Sleep(5 * time.Second)
+
+	storeForPut = append(storeForPut, thing)
+}
+
 // Move concurrently fetches Things from fetch() and puts them in put(). It
 // returns once fetch returns false (i.e. there are no more Things) and all
 // Things have been put().
 func Move(fetch Fetcher, put Putter) {
-	// [TODO]
+	ch := make(chan Thing)
 
 	go func() {
-		// [TODO]
-		t, ok := fetch()
-		_, _ = t, ok // [Remove later]
-		// [TODO]
+		defer close(ch)
+
+		for {
+			t, ok := fetch()
+			if !ok {
+				break
+			}
+			ch <- t
+		}
 	}()
 
-	var t Thing // [Remove later]
-	// [TODO]
-	put(t)
-	// [TODO]
+	// store the thing
+	for thing := range ch {
+		put(thing)
+	}
 }
 
 // MaybeMove is exactly the same as Move except that it may return an error
@@ -137,5 +174,6 @@ func MaybeMoveLots(ctx context.Context, n int, fetch MaybeFetcher, put MaybePutt
 }
 
 func main() {
-	fmt.Println()
+	Move(fetch, put)
+	fmt.Println(storeForPut)
 }
