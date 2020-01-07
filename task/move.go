@@ -61,22 +61,22 @@ func put(thing Thing) {
 // returns once fetch returns false (i.e. there are no more Things) and all
 // Things have been put().
 func Move(fetch Fetcher, put Putter) {
-	thingStream := make(chan Thing)
+	ch := make(chan Thing)
 
 	go func() {
-		defer close(thingStream)
+		defer close(ch)
 
 		for {
-			if t, ok := fetch(); ok {
-				thingStream <- t
-				continue
+			t, ok := fetch()
+			if !ok {
+				break
 			}
-			break
+			ch <- t
 		}
 	}()
 
 	// store the thing
-	for thing := range thingStream {
+	for thing := range ch {
 		put(thing)
 	}
 }
