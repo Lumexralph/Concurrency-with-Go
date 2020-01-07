@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"sync"
 	"time"
 )
 
@@ -29,7 +28,11 @@ type Putter func(Thing)
 type MaybePutter func(Thing) error
 
 // fetch function simulates returning Thing until there's nothing else
+// it simulates a process that takes some time
 func fetch() (thing Thing, ok bool) {
+	// simulate the delay
+	time.Sleep(2 * time.Second)
+
 	bookList := []string{"concurrency with Go", "Go systems programming",
 		"Isomorphic Go", "Go BluePrints", "Master Go",
 		"Go Library Cookbook", "Algorithm and Data structures"}
@@ -47,30 +50,35 @@ func fetch() (thing Thing, ok bool) {
 var storeForPut = []Thing{}
 
 // put take a value of type Thing and store it in a global map
+// also simulates another long process
 func put(thing Thing) {
+	time.Sleep(5 * time.Second)
+
 	storeForPut = append(storeForPut, thing)
 }
 
 // Move concurrently fetches Things from fetch() and puts them in put(). It
 // returns once fetch returns false (i.e. there are no more Things) and all
 // Things have been put().
-func Move(wg *sync.WaitGroup, fetch Fetcher, put Putter) {
-	wg.Add(1)
+func Move(fetch Fetcher, put Putter) {
+	thingStream := make(chan Thing)
+
 	go func() {
-		defer wg.Done()
+		defer close(thingStream)
 
 		for {
-			// at every iteration check the returned value is
-			// false, if it is exit, if not, put it in put
-			// [TODO]
-			t, ok := fetch()
-			if ok == false {
-				return
+			if t, ok := fetch(); ok {
+				thingStream <- t
+				continue
 			}
-			put(t)
+			break
 		}
 	}()
-	wg.Wait()
+
+	// store the thing
+	for thing := range thingStream {
+		put(thing)
+	}
 }
 
 // MaybeMove is exactly the same as Move except that it may return an error
@@ -166,9 +174,6 @@ func MaybeMoveLots(ctx context.Context, n int, fetch MaybeFetcher, put MaybePutt
 }
 
 func main() {
-	var wg sync.WaitGroup
-
-	Move(&wg, fetch, put)
-
+	Move(fetch, put)
 	fmt.Println(storeForPut)
 }
