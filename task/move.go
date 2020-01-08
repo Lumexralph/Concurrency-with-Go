@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"time"
@@ -109,21 +110,30 @@ func MaybeMove(fetch MaybeFetcher, put MaybePutter) error {
 // early then MoveCtx returns ctx.Err() just as MaybeMove returns any errors
 // that it encounters.
 func MoveCtx(ctx context.Context, fetch Fetcher, put Putter) error {
-	// [TODO]
+	ctx, cancel := context.WithCancel(ctx)
+	ch := make(chan Thing)
+	defer close(ch)
 
 	go func() {
-		// [TODO]
-		t, ok := fetch()
-		_, _ = t, ok // [Remove later]
-		// [TODO]
+		defer cancel()
+
+		for {
+			t, ok := fetch()
+			if !ok {
+				break
+			}
+			ch <- t
+		}
 	}()
 
-	var t Thing // [Remove later]
-	// [TODO]
-	put(t)
-	// [TODO]
-
-	return nil // [Remove later]
+	select {
+	// listen for signal on the done
+	case <-ctx.Done():
+		return ctx.Err()
+	case thing := <-ch:
+		put(thing)
+	}
+	return errors.New("fetching stopped")
 }
 
 // MoveLots functions like Move and also runs n concurrent go routines to fetch.
@@ -174,6 +184,6 @@ func MaybeMoveLots(ctx context.Context, n int, fetch MaybeFetcher, put MaybePutt
 }
 
 func main() {
-	Move(fetch, put)
-	fmt.Println(storeForPut)
+	err := MoveCtx(context.Background(), fetch, put)
+	fmt.Println("store: ", storeForPut, "error: ", err)
 }
