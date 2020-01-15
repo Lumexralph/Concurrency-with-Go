@@ -2,9 +2,7 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"math/rand"
 	"time"
 )
 
@@ -30,32 +28,38 @@ type MaybePutter func(Thing) error
 
 // fetch function simulates returning Thing until there's nothing else
 // it simulates a process that takes some time
-func fetch() (thing Thing, ok bool) {
+var i int
+
+type oldStore struct {
+	bookNo        int
+	bookInventory []Thing
+}
+
+type newStore struct {
+	inventory []Thing
+}
+
+func (o *oldStore) fetch() (thing Thing, ok bool) {
 	// simulate the delay
 	time.Sleep(2 * time.Second)
 
-	bookList := []string{"concurrency with Go", "Go systems programming",
-		"Isomorphic Go", "Go BluePrints", "Master Go",
-		"Go Library Cookbook", "Algorithm and Data structures"}
+	if o.bookNo > len(o.bookInventory)-1 {
 
-	// generate a random index, if the index is negative
-	// return false with an empty thing
-	rand.Seed(time.Now().UnixNano())
-	thing = rand.Intn(len(bookList)-(-len(bookList))) + (-len(bookList))
-	if thing.(int) > 0 {
-		thing, ok = bookList[thing.(int)], true
+		return thing, ok
 	}
+
+	time.Sleep(1 * time.Second)
+	thing, ok = o.bookInventory[o.bookNo], true
+	o.bookNo++
 	return
 }
 
-var storeForPut = []Thing{}
-
 // put take a value of type Thing and store it in a global map
 // also simulates another long process
-func put(thing Thing) {
+func (n *newStore) put(thing Thing) {
 	time.Sleep(5 * time.Second)
 
-	storeForPut = append(storeForPut, thing)
+	n.inventory = append(n.inventory, thing)
 }
 
 // Move concurrently fetches Things from fetch() and puts them in put(). It
@@ -78,7 +82,7 @@ func Move(fetch Fetcher, put Putter) {
 
 	// store the thing
 	for thing := range ch {
-		put(thing)
+		go put(thing)
 	}
 }
 
@@ -110,30 +114,33 @@ func MaybeMove(fetch MaybeFetcher, put MaybePutter) error {
 // early then MoveCtx returns ctx.Err() just as MaybeMove returns any errors
 // that it encounters.
 func MoveCtx(ctx context.Context, fetch Fetcher, put Putter) error {
-	ctx, cancel := context.WithCancel(ctx)
 	ch := make(chan Thing)
-	defer close(ch)
+	ctx, cancelFn := context.WithCancel(ctx)
+	defer cancelFn()
 
 	go func() {
-		defer cancel()
-
+		defer close(ch)
 		for {
 			t, ok := fetch()
 			if !ok {
+				fmt.Println("===> I am done!")
 				break
 			}
-			ch <- t
+
+			select {
+			case <-ctx.Done():
+				fmt.Println(ctx.Err())
+				return
+			case ch <- t:
+			}
 		}
 	}()
 
-	select {
-	// listen for signal on the done
-	case <-ctx.Done():
-		return ctx.Err()
-	case thing := <-ch:
+	// store the thing
+	for thing := range ch {
 		put(thing)
 	}
-	return errors.New("fetching stopped")
+	return nil
 }
 
 // MoveLots functions like Move and also runs n concurrent go routines to fetch.
@@ -184,6 +191,20 @@ func MaybeMoveLots(ctx context.Context, n int, fetch MaybeFetcher, put MaybePutt
 }
 
 func main() {
-	err := MoveCtx(context.Background(), fetch, put)
-	fmt.Println("store: ", storeForPut, "error: ", err)
+	old := &oldStore{
+		bookNo: 0,
+		bookInventory: []Thing{"concurrency with Go", "Go systems programming",
+			"Isomorphic Go", "Go BluePrints", "Master Go",
+			"Go Library Cookbook", "Algorithm and Data structures"},
+	}
+	new := &newStore{}
+
+	t := time.Now()
+	// we  can cancel the  whole process after a duration of 20 secs
+	ctx, cancelFn := context.WithCancel(context.Background())
+	time.AfterFunc(20*time.Second, cancelFn)
+
+	err := MoveCtx(ctx, old.fetch, new.put)
+	fmt.Println(new.inventory, "error: ", err)
+	fmt.Println("time Elapsed: ", time.Since(t))
 }
