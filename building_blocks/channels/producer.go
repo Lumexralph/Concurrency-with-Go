@@ -7,7 +7,7 @@ import "fmt"
 var chanOwner = func() <-chan int {
 	// encapsulates all the operation of instantiating
 	// closing and writes to a channel in a read channel
-	resultStream := make(chan int, 5)
+	resultStream := make(chan int)
 	go func() {
 		// handle close of the channel
 		defer close(resultStream)
