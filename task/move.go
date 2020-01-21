@@ -115,9 +115,9 @@ func MaybeMove(fetch MaybeFetcher, put MaybePutter) error {
 // that it encounters.
 func MoveCtx(ctx context.Context, fetch Fetcher, put Putter) error {
 	ch := make(chan Thing)
-	ctx, cancelFn := context.WithCancel(ctx)
-	defer cancelFn()
+	var fetchError error
 
+	// I can avoid mixing anonymous function with goroutines
 	go func() {
 		defer close(ch)
 		for {
@@ -129,7 +129,7 @@ func MoveCtx(ctx context.Context, fetch Fetcher, put Putter) error {
 
 			select {
 			case <-ctx.Done():
-				fmt.Println(ctx.Err())
+				fetchError = ctx.Err()
 				return
 			case ch <- t:
 			}
@@ -140,7 +140,7 @@ func MoveCtx(ctx context.Context, fetch Fetcher, put Putter) error {
 	for thing := range ch {
 		put(thing)
 	}
-	return nil
+	return fetchError
 }
 
 // MoveLots functions like Move and also runs n concurrent go routines to fetch.
