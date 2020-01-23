@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -86,27 +87,79 @@ func Move(fetch Fetcher, put Putter) {
 	}
 }
 
+func (o *oldStore) fetchB() (thing Thing, ok bool, err error) {
+	// simulate the delay
+	time.Sleep(2 * time.Second)
+	fmt.Println("fetchB: fetching...", o.bookNo)
+
+	if o.bookNo == 5 {
+		return thing, ok, errors.New("Fetch encountered network issues")
+	}
+
+	if o.bookNo > len(o.bookInventory)-1 {
+
+		return thing, ok, err
+	}
+
+	time.Sleep(1 * time.Second)
+	thing, ok = o.bookInventory[o.bookNo], true
+	o.bookNo++
+	return
+}
+
+func (n *newStore) putB(thing Thing) error {
+	time.Sleep(5 * time.Second)
+
+	n.inventory = append(n.inventory, thing)
+
+	if len(n.inventory) == 4 {
+		return errors.New("store is filled up")
+	}
+
+	return nil
+}
+
 // MaybeMove is exactly the same as Move except that it may return an error
 // because fetch() and put() may return errors. If no errors occur then
 // MaybeMove returns under the same conditions as Move(). If an error occurs
 // then MaybeMove returns earlier even if there are more Things to fetch().
 func MaybeMove(fetch MaybeFetcher, put MaybePutter) error {
-	// [TODO]
+	ch := make(chan Thing)
+	errCh := make(chan error, 1)
+	done := make(chan struct{}, 1)
+	defer close(done)
 
 	go func() {
-		// [TODO]
-		t, ok, err := fetch()
-		_, _, _ = t, ok, err // [Remove later]
-		// [TODO]
+		defer close(errCh)
+		defer close(ch)
+
+		for {
+			select {
+			// get a signal to stop the goroutine
+			case <-done:
+				fmt.Println("Terminated from Parent Goroutine...")
+				return
+			default:
+				if t, ok, err := fetch(); err != nil {
+					fmt.Println("Fetch encountered error")
+					errCh <- err
+					return
+				} else if !ok {
+					return
+				} else {
+					ch <- t
+				}
+			}
+		}
 	}()
 
-	var t Thing // [Remove later]
-	// [TODO]
-	err := put(t)
-	_ = err // [Remove later]
-	// [TODO]
-
-	return nil // [Remove later]
+	for thing := range ch {
+		if err := put(thing); err != nil {
+			done <- struct{}{} // signal to end the fetch goroutine
+			errCh <- err
+		}
+	}
+	return <-errCh
 }
 
 // MoveCtx is exactly the same as Move except it honours the
@@ -199,12 +252,15 @@ func main() {
 	}
 	new := &newStore{}
 
-	t := time.Now()
-	// we  can cancel the  whole process after a duration of 20 secs
-	ctx, cancelFn := context.WithCancel(context.Background())
-	time.AfterFunc(20*time.Second, cancelFn)
+	// t := time.Now()
+	// // we  can cancel the  whole process after a duration of 20 secs
+	// ctx, cancelFn := context.WithCancel(context.Background())
+	// time.AfterFunc(20*time.Second, cancelFn)
 
-	err := MoveCtx(ctx, old.fetch, new.put)
-	fmt.Println(new.inventory, "error: ", err)
-	fmt.Println("time Elapsed: ", time.Since(t))
+	// err := MoveCtx(ctx, old.fetch, new.put)
+	// fmt.Println(new.inventory, "error: ", err)
+	// fmt.Println("time Elapsed: ", time.Since(t))
+	err := MaybeMove(old.fetchB, new.putB)
+	fmt.Println("New Store: ", new.inventory)
+	fmt.Println("MaybeMove: ", err)
 }
