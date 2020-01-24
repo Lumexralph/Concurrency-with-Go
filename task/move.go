@@ -89,7 +89,7 @@ func Move(fetch Fetcher, put Putter) {
 
 func (o *oldStore) fetchB() (thing Thing, ok bool, err error) {
 	// simulate the delay
-	time.Sleep(2 * time.Second)
+	time.Sleep(3 * time.Second)
 	fmt.Println("fetchB: fetching...", o.bookNo)
 
 	if o.bookNo == 5 {
@@ -101,18 +101,17 @@ func (o *oldStore) fetchB() (thing Thing, ok bool, err error) {
 		return thing, ok, err
 	}
 
-	time.Sleep(1 * time.Second)
 	thing, ok = o.bookInventory[o.bookNo], true
 	o.bookNo++
 	return
 }
 
 func (n *newStore) putB(thing Thing) error {
-	time.Sleep(5 * time.Second)
+	time.Sleep(3 * time.Second)
 
 	n.inventory = append(n.inventory, thing)
 
-	if len(n.inventory) == 4 {
+	if len(n.inventory) == 5 {
 		return errors.New("store is filled up")
 	}
 
@@ -125,11 +124,11 @@ func (n *newStore) putB(thing Thing) error {
 // then MaybeMove returns earlier even if there are more Things to fetch().
 func MaybeMove(fetch MaybeFetcher, put MaybePutter) error {
 	ch := make(chan Thing)
-	errCh := make(chan error, 1)
+	errCh := make(chan error, 2)
 	quit := make(chan struct{})
+	defer close(errCh)
 
 	go func() {
-		defer close(errCh)
 		defer close(ch)
 
 		for {
@@ -157,6 +156,7 @@ func MaybeMove(fetch MaybeFetcher, put MaybePutter) error {
 
 	for thing := range ch {
 		if err := put(thing); err != nil {
+			fmt.Println("Error in adding to new store")
 			close(quit) // signal to end the fetch goroutine
 			errCh <- err
 		}
