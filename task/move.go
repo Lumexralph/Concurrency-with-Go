@@ -126,8 +126,7 @@ func (n *newStore) putB(thing Thing) error {
 func MaybeMove(fetch MaybeFetcher, put MaybePutter) error {
 	ch := make(chan Thing)
 	errCh := make(chan error, 1)
-	done := make(chan struct{}, 1)
-	defer close(done)
+	quit := make(chan struct{})
 
 	go func() {
 		defer close(errCh)
@@ -136,29 +135,33 @@ func MaybeMove(fetch MaybeFetcher, put MaybePutter) error {
 		for {
 			select {
 			// get a signal to stop the goroutine
-			case <-done:
+			case <-quit:
 				fmt.Println("Terminated from Parent Goroutine...")
 				return
 			default:
-				if t, ok, err := fetch(); err != nil {
+				t, ok, err := fetch()
+				if err != nil {
 					fmt.Println("Fetch encountered error")
 					errCh <- err
 					return
-				} else if !ok {
-					return
-				} else {
-					ch <- t
 				}
+
+				if !ok {
+					return
+				}
+
+				ch <- t
 			}
 		}
 	}()
 
 	for thing := range ch {
 		if err := put(thing); err != nil {
-			done <- struct{}{} // signal to end the fetch goroutine
+			close(quit) // signal to end the fetch goroutine
 			errCh <- err
 		}
 	}
+
 	return <-errCh
 }
 
