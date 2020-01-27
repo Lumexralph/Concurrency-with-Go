@@ -126,7 +126,6 @@ func MaybeMove(fetch MaybeFetcher, put MaybePutter) error {
 	ch := make(chan Thing)
 	errCh := make(chan error, 2)
 	quit := make(chan struct{})
-	defer close(errCh)
 
 	go func() {
 		defer close(ch)
@@ -161,6 +160,8 @@ func MaybeMove(fetch MaybeFetcher, put MaybePutter) error {
 			errCh <- err
 		}
 	}
+
+	close(errCh)
 
 	return <-errCh
 }
