@@ -2,21 +2,25 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"github.com/google/go-cmp/cmp"
 	"reflect"
 	"testing"
 )
 
 type stub struct {
-	toFetch []Thing
-	curr    int
-	gotPut  []Thing
+	toFetch          []Thing
+	curr             int
+	fetchErr, putErr bool
+	gotPut           []Thing
 }
 
 func (s *stub) fetch() (Thing, bool) {
 	if s.curr >= len(s.toFetch) {
 		return nil, false
 	}
+
 	t := s.toFetch[s.curr]
 	s.curr++
 	return t, true
@@ -94,4 +98,67 @@ func TestMoveCtx(t *testing.T) {
 		})
 
 	}
+}
+
+// MaybeMove tests implementation
+func (s *stub) mayBeFetch() (Thing, bool, error) {
+	if s.fetchErr == true {
+		return nil, false, errors.New("something went wrong while fetching things")
+	}
+
+	if s.curr >= len(s.toFetch) {
+		return nil, false, nil
+	}
+
+	t := s.toFetch[s.curr]
+	s.curr++
+	return t, true, nil
+}
+
+func (s *stub) mayBePut(t Thing) error {
+	if s.putErr {
+		return errors.New("could not continue putting thing")
+	}
+
+	s.gotPut = append(s.gotPut, t)
+	return nil
+}
+
+func TestMaybeMove(t *testing.T) {
+	t.Run("no errors during fetch and put", func(t *testing.T) {
+		testCase := struct {
+			stub *stub
+			want []Thing
+		}{
+			stub: &stub{
+				toFetch: []Thing{1, 2, 3},
+			},
+			want: []Thing{1, 2, 3},
+		}
+
+		if err := MaybeMove(testCase.stub.mayBeFetch, testCase.stub.mayBePut); err != nil {
+			t.Errorf("MaybeMove() got err %v; want %v", err, nil)
+		}
+
+		if diff := cmp.Diff(testCase.want, testCase.stub.gotPut); diff != "" {
+			t.Errorf("MaybeMove() mismatch (-want +got):\n%s", diff)
+		}
+	})
+
+	t.Run("errors in put", func(t *testing.T) {
+		testsCase := struct {
+			stub *stub
+			want []Thing
+		}{
+			stub: &stub{
+				toFetch: []Thing{1, 2},
+				putErr:  true,
+			},
+		}
+
+		if err := MaybeMove(testsCase.stub.mayBeFetch, testsCase.stub.mayBePut); err == nil {
+			wantErr := errors.New("could not continue putting thing")
+			t.Errorf("MaybeMove() should get error, got %v; want %v", err, wantErr)
+		}
+	})
 }

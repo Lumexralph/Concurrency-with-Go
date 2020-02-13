@@ -107,11 +107,11 @@ func (o *oldStore) fetchB() (thing Thing, ok bool, err error) {
 }
 
 func (n *newStore) putB(thing Thing) error {
-	time.Sleep(3 * time.Second)
+	time.Sleep(2 * time.Second)
 
 	n.inventory = append(n.inventory, thing)
 
-	if len(n.inventory) == 5 {
+	if len(n.inventory) == 3 {
 		return errors.New("store is filled up")
 	}
 
@@ -155,7 +155,7 @@ func MaybeMove(fetch MaybeFetcher, put MaybePutter) error {
 
 	for thing := range ch {
 		if err := put(thing); err != nil {
-			fmt.Println("Error in adding to new store")
+			fmt.Println("Error in adding to new store", err)
 			close(quit) // signal to end the fetch goroutine
 			errCh <- err
 		}
