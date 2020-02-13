@@ -103,7 +103,7 @@ func TestMoveCtx(t *testing.T) {
 // MaybeMove tests implementation
 func (s *stub) mayBeFetch() (Thing, bool, error) {
 	if s.fetchErr == true {
-		return nil, false, errors.New("something went wrong while fetching things")
+		return nil, false, errors.New("something went wrong fetching things")
 	}
 
 	if s.curr >= len(s.toFetch) {
@@ -145,20 +145,48 @@ func TestMaybeMove(t *testing.T) {
 		}
 	})
 
-	t.Run("errors in put", func(t *testing.T) {
-		testsCase := struct {
-			stub *stub
-			want []Thing
-		}{
+	testCases := []struct{
+		name string
+		stub *stub
+		want []Thing
+	}{
+		{
+			name: "errors in put",
 			stub: &stub{
-				toFetch: []Thing{1, 2},
+				// I discovered a bug when []Thing{1, 2} is supplied, the second
+				// execution of fetch runs, why? It seems the second call to fetch was
+				// placed on the stack and executed leading to the panic on closing
+				// an already closed channel.
+				toFetch: []Thing{1},
 				putErr:  true,
 			},
-		}
+		},
+		{
+			name: "errors in fetch",
+			stub: &stub{
+				toFetch: []Thing{1, 2},
+				fetchErr:  true,
+			},
+		},
+		{
+			name: "errors in fetch and put",
+			stub: &stub{
+				toFetch: []Thing{1, 2},
+				fetchErr:  true,
+				putErr: true,
+			},
+		},
+	}
 
-		if err := MaybeMove(testsCase.stub.mayBeFetch, testsCase.stub.mayBePut); err == nil {
-			wantErr := errors.New("could not continue putting thing")
-			t.Errorf("MaybeMove() should get error, got %v; want %v", err, wantErr)
-		}
-	})
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := MaybeMove(tc.stub.mayBeFetch, tc.stub.mayBePut); err == nil {
+				t.Errorf("MaybeMove() should get error, got %v", err)
+			}
+
+			if diff := cmp.Diff(tc.want, tc.stub.gotPut); diff != "" {
+				t.Errorf("MaybeMove() mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
 }

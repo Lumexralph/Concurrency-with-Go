@@ -29,8 +29,6 @@ type MaybePutter func(Thing) error
 
 // fetch function simulates returning Thing until there's nothing else
 // it simulates a process that takes some time
-var i int
-
 type oldStore struct {
 	bookNo        int
 	bookInventory []Thing
@@ -89,7 +87,7 @@ func Move(fetch Fetcher, put Putter) {
 
 func (o *oldStore) fetchB() (thing Thing, ok bool, err error) {
 	// simulate the delay
-	time.Sleep(3 * time.Second)
+	time.Sleep(1 * time.Second)
 	fmt.Println("fetchB: fetching...", o.bookNo)
 
 	if o.bookNo == 5 {
@@ -111,7 +109,7 @@ func (n *newStore) putB(thing Thing) error {
 
 	n.inventory = append(n.inventory, thing)
 
-	if len(n.inventory) == 3 {
+	if len(n.inventory) == 5 {
 		return errors.New("store is filled up")
 	}
 
