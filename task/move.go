@@ -29,8 +29,6 @@ type MaybePutter func(Thing) error
 
 // fetch function simulates returning Thing until there's nothing else
 // it simulates a process that takes some time
-var i int
-
 type oldStore struct {
 	bookNo        int
 	bookInventory []Thing
@@ -89,7 +87,7 @@ func Move(fetch Fetcher, put Putter) {
 
 func (o *oldStore) fetchB() (thing Thing, ok bool, err error) {
 	// simulate the delay
-	time.Sleep(3 * time.Second)
+	time.Sleep(1 * time.Second)
 	fmt.Println("fetchB: fetching...", o.bookNo)
 
 	if o.bookNo == 5 {
@@ -107,7 +105,7 @@ func (o *oldStore) fetchB() (thing Thing, ok bool, err error) {
 }
 
 func (n *newStore) putB(thing Thing) error {
-	time.Sleep(3 * time.Second)
+	time.Sleep(2 * time.Second)
 
 	n.inventory = append(n.inventory, thing)
 
@@ -123,9 +121,14 @@ func (n *newStore) putB(thing Thing) error {
 // MaybeMove returns under the same conditions as Move(). If an error occurs
 // then MaybeMove returns earlier even if there are more Things to fetch().
 func MaybeMove(fetch MaybeFetcher, put MaybePutter) error {
+	// Usually you only use context.Background() in main.main() or tests,
+	// and would accept ctx as the first argument to MaybeMove(ctx) and
+	// then call WithCancel(ctx).
+	ctx, cancel := context.WithCancel(context.Background())
+
 	ch := make(chan Thing)
 	errCh := make(chan error, 2)
-	quit := make(chan struct{})
+
 
 	go func() {
 		defer close(ch)
@@ -133,7 +136,7 @@ func MaybeMove(fetch MaybeFetcher, put MaybePutter) error {
 		for {
 			select {
 			// get a signal to stop the goroutine
-			case <-quit:
+			case <-ctx.Done():
 				fmt.Println("Terminated from Parent Goroutine...")
 				return
 			default:
@@ -155,8 +158,8 @@ func MaybeMove(fetch MaybeFetcher, put MaybePutter) error {
 
 	for thing := range ch {
 		if err := put(thing); err != nil {
-			fmt.Println("Error in adding to new store")
-			close(quit) // signal to end the fetch goroutine
+			fmt.Println("Error in adding to new store", err)
+			cancel() // signal to end the fetch goroutine
 			errCh <- err
 		}
 	}
