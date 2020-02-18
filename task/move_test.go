@@ -157,7 +157,7 @@ func TestMaybeMove(t *testing.T) {
 				// execution of fetch runs, why? It seems the second call to fetch was
 				// placed on the stack and executed leading to the panic on closing
 				// an already closed channel.
-				toFetch: []Thing{1},
+				toFetch: []Thing{1, 2},
 				putErr:  true,
 			},
 		},
