@@ -9,3 +9,8 @@ A goroutine is a function that is running concurrently alongside other code in a
 Goroutines are not OS threads or threads managed by runtime (green threads), they are higher level of abstraction called Coroutines.
 
 Coroutines are concurrent subroutines i.e functions, methods or closures in Go, that cannot be interrupted, instead they have multiple points that allows for suspension or reentry.
+
+## Examples
+https://play.golang.org/p/HGlL61mmy9N
+
+https://play.golang.org/p/IoaAuRx8RHA
